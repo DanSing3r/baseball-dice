@@ -94,7 +94,6 @@ class Player:
     cs: int = 0
     sac: int = 0
     sf: int = 0
-    hr: int = 0
 
     @property
     def avg(self) -> str:
@@ -111,8 +110,6 @@ class Team:
     runs: int = 0
     hits: int = 0
     errors: int = 0
-    retired_row: int = 0            # batters retired in a row while fielding
-    k_row: int = 0                  # strikeouts in a row while fielding
     line: List[int] = field(default_factory=list)
     bases: List[Optional[Player]] = field(default_factory=lambda: [None, None, None])
 
@@ -181,11 +178,7 @@ class Game:
         self.watch_delay = watch_delay
         self.watching = False
         self.last_play = None
-        self.went_deep = False          # was the batter before this one a homer
-        self.lead = 0                   # who was ahead before the last play
-        self.half_k = 0                 # strikeouts this half inning
-        self.on_row = 0                 # batters reaching in a row this half
-        self.prev_half_runs = 0         # runs in the half just finished
+        self.transcript = []            # every line printed, for --recap
         self.log_width = 68
 
     # -- output helpers ----------------------------------------------------
@@ -206,6 +199,7 @@ class Game:
             time.sleep(pause)
 
     def say(self, text: str = "") -> None:
+        self.transcript.append(text)
         print(text)
         if text.strip():
             self.hold()
@@ -233,86 +227,6 @@ class Game:
                            for i in range(at[k]))
             print(pad + stem + "\u2514\u2500 " + labels[k])
         print()
-
-    def note(self, words: str) -> None:
-        self.say("     -- %s" % words)
-
-    def call_the_game(self, batting: Team, fielding: Team, batter: Player,
-                      text: str, scored: list, outs: int, inning: int,
-                      faced: int) -> None:
-        """One line of colour when something is actually going on.  At most one
-        per play, most notable first, so it stays an aside rather than a wall."""
-        homer = "HOME RUN" in text
-        struck_out = "strikes out" in text
-        got_a_hit = ("single" in text or "double" in text or "triple" in text
-                     or homer)
-        reached = (batter in batting.bases or batter in scored)
-
-        # Streaks.  Reaching on an error or a fielder's choice is not being
-        # retired, even though an out was made on the play.
-        retired = not reached and not got_a_hit and "walk" not in text
-        fielding.retired_row = fielding.retired_row + 1 if retired else 0
-        fielding.k_row = fielding.k_row + 1 if struck_out else 0
-        self.on_row = self.on_row + 1 if reached else 0
-        if struck_out:
-            self.half_k += 1
-
-        was_deep, self.went_deep = self.went_deep, homer
-        lead_was, self.lead = self.lead, (
-            (self.home.runs > self.away.runs) - (self.home.runs < self.away.runs))
-
-        if homer and len(scored) == 4:
-            return self.note("A grand slam!")
-        if scored and self.away.runs + self.home.runs == len(scored):
-            return self.note("The first runs of the day.")
-        if homer and was_deep:
-            return self.note("Back to back!  %s have gone deep twice running."
-                             % batting.name)
-        if homer and batter.hr > 1:
-            return self.note("That is number %d on the day for %s."
-                             % (batter.hr, batter.name))
-        if scored and lead_was and self.lead and self.lead != lead_was:
-            return self.note("The lead changes hands.")
-        if scored and lead_was and not self.lead:
-            return self.note("All square again.")
-        if faced == 10:
-            return self.note("That is the order all the way around.")
-        if "double play" in text and outs < 3:
-            return self.note("The double play takes the air right out of it.")
-        if fielding.retired_row and fielding.retired_row % 6 == 0:
-            return self.note("%s have retired %d in a row."
-                             % (fielding.name, fielding.retired_row))
-        if fielding.k_row == 3:
-            return self.note("Three straight on strikes for %s." % fielding.name)
-        if self.on_row == 3:
-            return self.note("Three men aboard in a row -- this is a rally.")
-        if got_a_hit and batting.hits == 1 and inning >= 6:
-            return self.note("First hit of the day for %s." % batting.name)
-        if got_a_hit and batter.h == 3:
-            return self.note("Three hits on the day for %s." % batter.name)
-        if all(batting.bases) and outs == 2:
-            return self.note("Bases full, two away.")
-
-    def call_the_half(self, batting: Team, fielding: Team, inning: int,
-                      runs: int, top: bool) -> None:
-        """Colour for the half inning as a whole, once it is over."""
-        left = sum(1 for r in batting.bases if r is not None)
-        answered, self.prev_half_runs = self.prev_half_runs and runs, runs
-
-        if runs >= 4:
-            self.note("A %d-run inning." % runs)
-        elif self.half_k == 3:
-            self.note("%s struck out the side." % fielding.name)
-        elif batting.hits == 0 and inning >= 5:
-            self.note("Through %d, %s have not allowed a hit."
-                      % (inning, fielding.name))
-        elif answered:
-            self.note("An answer right back.")
-        elif left == 3:
-            self.note("The bases are left full.")
-        elif (not top and inning >= 4
-              and not self.away.runs and not self.home.runs):
-            self.note("Still nothing on the board for either side.")
 
     def scorebug(self, batting: Team, outs: int) -> str:
         """Bases and outs, as shown before every play."""
@@ -674,7 +588,6 @@ class Game:
             else:
                 scored = batting.advance_all(3) + [batter]
                 batting.clear_bases()
-                batter.hr += 1
                 text = "HOME RUN %s!" % random.choice(OUTFIELD)
 
         roll = "[%d-%d%s]" % (
@@ -694,8 +607,6 @@ class Game:
         batting = self.away if top else self.home
         self.watching = False           # the banner never crawls
         self.last_play = None           # nothing from this half to explain yet
-        self.half_k = 0
-        self.on_row = 0
         label = "Top" if top else "Bottom"
         suffix = "th" if 11 <= inning % 100 <= 13 else \
             {1: "st", 2: "nd", 3: "rd"}.get(inning % 10, "th")
@@ -708,8 +619,6 @@ class Game:
         self.say("-" * self.log_width)
 
         self.watching = not self.coaches_batting_team(top)
-        if inning == self.regulation + 1 and top:
-            self.note("Free baseball.")
         batting.clear_bases()
         outs = 0
         runs_this_inning = 0
@@ -757,8 +666,6 @@ class Game:
             if scored:
                 line += "  (%d run%s)" % (len(scored), "" if len(scored) == 1 else "s")
             self.say(line)
-            self.call_the_game(batting, self.home if top else self.away,
-                               batter, text, scored, outs, inning, batters_faced)
 
             # Walk-off: home team takes the lead in the last of the ninth.
             if (not top and inning >= self.regulation
@@ -768,8 +675,6 @@ class Game:
                 return
 
         batting.line.append(runs_this_inning)
-        self.call_the_half(batting, self.home if top else self.away,
-                           inning, runs_this_inning, top)
         if runs_this_inning == 0:
             self.say("  Three up, three down."
                      if batters_faced == 3 and not reached else "  No runs.")
@@ -778,6 +683,22 @@ class Game:
                                          "" if runs_this_inning == 1 else "s"))
 
     # -- full game ---------------------------------------------------------
+    def recap(self) -> None:
+        """Hand the game to Claude and print the radio wrap."""
+        try:
+            import recap as recap_module
+        except ImportError:
+            self.say(" No recap: recap.py is missing.")
+            return
+        self.say(" " + "-" * (self.log_width - 2))
+        self.say(" THE WRAP")
+        self.say("")
+        text = recap_module.write_recap(self.transcript, self.away.name,
+                                       self.home.name)
+        for line in recap_module.wrap(text, self.log_width):
+            self.say(line)
+        self.say()
+
     def play(self) -> None:
         self.say("=" * self.log_width)
         self.say(" BASEBALL DICE -- %s at %s" % (self.away.name, self.home.name))
@@ -906,6 +827,8 @@ def main() -> None:
     ap.add_argument("--coach", default="home",
                     choices=["home", "away", "both", "none"],
                     help="which dugout you manage from (default: home)")
+    ap.add_argument("--recap", action="store_true",
+                    help="after the box score, ask Claude for the radio wrap")
     ap.add_argument("--seed", type=int, help="seed the dice for a repeatable game")
     ap.add_argument("--chart", action="store_true", help="print the result chart and exit")
     ap.add_argument("--sim", type=int, metavar="N",
@@ -929,6 +852,8 @@ def main() -> None:
                 coach=args.coach,
                 watch_delay=args.watch_delay)
     game.play()
+    if args.recap:
+        game.recap()
 
 
 if __name__ == "__main__":

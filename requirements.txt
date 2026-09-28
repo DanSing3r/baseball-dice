@@ -1,0 +1,2 @@
+# Only needed for the --recap postgame wrap. The game itself has no dependencies.
+anthropic>=1.8.0

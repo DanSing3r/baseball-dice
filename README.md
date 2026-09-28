@@ -268,29 +268,6 @@ Tagging up from second is not a sacrifice, so that one is charged normally.
 Sacrifice flies come out at 0.22 per team per game against a real 0.25, and a
 runner tags up from second about 0.16 times a game.
 
-## Colour commentary
-
-The log calls out anything worth noticing, one aside at a time, set off by a
-dash:
-
-```
-  [2-6]      Delgado      singles to left-center.
-  [5-6|5]    Halloran     HOME RUN to left!  (2 runs)
-     -- The first runs of the day.
-```
-
-It watches for streaks a batter or a defense is running (retiring six in a row,
-three straight strikeouts, three men aboard, striking out the side, a no-hit bid
-from the fifth on), for moments that turn a game (the first runs, a grand slam,
-back-to-back homers, a lead change, a tie restored, an answer right back in the
-next half, free baseball), and for situations worth feeling (bases full with two
-away, a rally-killing double play, the order coming all the way around, still
-nothing on the board).
-
-Only one note fires per play, most notable first, so it stays an aside. That
-works out to about a dozen a game — roughly one every other half inning, and
-they cluster where the game is actually interesting.
-
 ## Errors
 
 A booted ball puts the batter on first and pushes only the runners who are
@@ -316,12 +293,45 @@ baseball is nearer 4.4.
 Close throughout except for triples, which the chart is generous with at 1.4%
 against a real 0.4% — they're more fun than they are frequent.
 
+## The wrap
+
+`--recap` hands the whole game log to Claude after the box score and prints the
+radio call:
+
+```
+python3 baseball_dice.py --auto --recap
+```
+
+It is asked for what a good postgame wrap does: name the turning point and say
+why it mattered, trace the shape of the game, give credit where the box score
+says it is due — and never inflate a dull game. It reads the log and nothing
+else, so it can notice things no canned rule would, like a hitter going
+four-for-five without driving in a run.
+
+Setup, once:
+
+```
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp config.env.example config.env     # then put your key in it
+```
+
+`config.env` is gitignored. The key can also come from `ANTHROPIC_API_KEY` in
+the environment.
+
+The game itself stays dependency free — `recap.py` is only imported when you
+pass the flag, so without it `baseball_dice.py` still runs anywhere with no
+install and no key. Without a key or the SDK, `--recap` prints one line saying
+why and leaves the game alone.
+
+About 4 to 5 cents a game on Claude Opus 5, so roughly 20 recaps per dollar.
+
 ## Other flags
 
 `--away NAME` · `--home NAME` · `--innings N` · `--coach home|away|both|none`
 · `--watch-delay SECONDS` (pacing for the half you watch) · `--delay SECONDS`
-(pacing for every line, auto mode included) · `--seed N` (replay the exact same
-game)
+(pacing for every line, auto mode included) · `--recap` · `--seed N` (replay
+the exact same game)
 
 Extra innings are played until someone wins; the home team doesn't bat in the
 last of the ninth with a lead, and a walk-off ends the game on the spot.
