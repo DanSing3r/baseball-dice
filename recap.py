@@ -13,6 +13,7 @@ file, and the anthropic SDK (see requirements.txt).
 from __future__ import annotations
 
 import os
+import sys
 from typing import List, Optional
 
 MODEL = "claude-opus-5"
@@ -84,8 +85,18 @@ def write_recap(transcript: List[str], away: str, home: str) -> str:
     try:
         import anthropic
     except ImportError:
-        return ("No recap: the anthropic package is not installed here. "
-                "See requirements.txt.")
+        # Almost always this: the game was run on the system python, while the
+        # SDK lives in the project venv.  Say exactly what to run instead.
+        here = os.path.dirname(os.path.abspath(__file__))
+        venv = os.path.join(here, ".venv", "bin", "python")
+        if os.path.exists(venv) and os.path.abspath(sys.executable) != venv:
+            return ("No recap: this python has no anthropic package. Run the "
+                    "game with the project's instead:\n"
+                    "    .venv/bin/python baseball_dice.py --recap")
+        return ("No recap: the anthropic package is not installed. Set it up "
+                "with:\n"
+                "    python3.12 -m venv .venv\n"
+                "    .venv/bin/pip install -r requirements.txt")
 
     log = "\n".join(transcript)
     ask = ("Here is the complete log of today's game, %s at %s, play by play and"
@@ -120,6 +131,8 @@ def wrap(text: str, width: int = 68, indent: str = " ") -> List[str]:
     """Fold the wrap to the log's width, keeping paragraph breaks."""
     import textwrap
     out: List[str] = []
+    if text.startswith("No recap:"):        # keep the command on its own line
+        return [indent + line for line in text.split("\n")]
     for para in [p for p in text.split("\n") if p.strip()]:
         out.extend(textwrap.wrap(para.strip(), width=width - len(indent),
                                  initial_indent=indent, subsequent_indent=indent))

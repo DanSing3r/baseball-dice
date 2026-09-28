@@ -622,8 +622,6 @@ class Game:
         batting.clear_bases()
         outs = 0
         runs_this_inning = 0
-        batters_faced = 0
-        reached = False
 
         while outs < 3:
             if self.watching and self.interactive:
@@ -645,8 +643,6 @@ class Game:
                                    self.home if top else self.away)
 
             batter, roll, text, scored, outs_made = play
-            batters_faced += 1
-            reached = reached or bool(scored) or any(batting.bases)
 
             # Runs only count if the third out wasn't made on the play.
             if outs + outs_made >= 3:
@@ -675,12 +671,6 @@ class Game:
                 return
 
         batting.line.append(runs_this_inning)
-        if runs_this_inning == 0:
-            self.say("  Three up, three down."
-                     if batters_faced == 3 and not reached else "  No runs.")
-        else:
-            self.say("  %d run%s in." % (runs_this_inning,
-                                         "" if runs_this_inning == 1 else "s"))
 
     # -- full game ---------------------------------------------------------
     def recap(self) -> None:

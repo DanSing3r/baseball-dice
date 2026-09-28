@@ -299,8 +299,12 @@ against a real 0.4% — they're more fun than they are frequent.
 radio call:
 
 ```
-python3 baseball_dice.py --auto --recap
+.venv/bin/python baseball_dice.py --auto --recap
 ```
+
+Note the interpreter: the SDK lives in the project venv, so the recap needs
+`.venv/bin/python` rather than the system `python3`. Run it on the wrong one and
+it tells you so.
 
 It is asked for what a good postgame wrap does: name the turning point and say
 why it mattered, trace the shape of the game, give credit where the box score
