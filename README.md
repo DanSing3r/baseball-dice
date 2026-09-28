@@ -160,6 +160,19 @@ applies only while you are still stepping through the game — press `a` for aut
 and the rest runs at whatever `--delay` says, which is full speed unless you
 set it.
 
+There are two keys, but the bunt is really two plays depending on who is on
+base:
+
+| Play | Offered when | Works |
+| --- | --- | --- |
+| Steal | runner on first, second base open, any number of outs | 67% |
+| Bunt — sacrifice | runner on first or second, nobody on third, under two outs | 83% |
+| Bunt — squeeze | runner on third, under two outs | 67% |
+
+Those percentages are not comparable as they stand: a successful steal costs
+nothing, while a successful sacrifice still spends an out. What each one is worth
+is further down.
+
 **Steal** — a runner on first with second base open. One die, 3 or better and
 he has it: 67% safe. A caught stealing is an out and the batter stays up.
 
@@ -192,11 +205,11 @@ With a runner on third — the squeeze:
 | 6 | they throw home and cut the run down |
 
 So a sacrifice moves the runner **83%** of the time and a squeeze brings the run
-in **67%** — measured at 83.3% and 65.4% over 800 games. The ladder across the
-three called plays runs sacrifice 83%, squeeze 67%, steal 67%. On a 6 the defense gets
-the most advanced runner it can reach, and a runner is only *forced* when every
-base behind him is occupied, so with first base empty there is no force anywhere
-and the throw has to beat the runner:
+in **67%** — measured at 83.3% and 65.4% over 800 games.
+
+On a 6 the defense gets the most advanced runner it can reach, and a runner is
+only *forced* when every base behind him is occupied, so with first base empty
+there is no force anywhere and the throw has to beat the runner:
 
 | Runners | What a 6 costs you |
 | --- | --- |
