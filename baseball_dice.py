@@ -20,8 +20,10 @@ first to third.
 from __future__ import annotations
 
 import argparse
+import itertools
 import random
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -179,6 +181,7 @@ class Game:
         self.watching = False
         self.last_play = None
         self.transcript = []            # every line printed, for --recap
+        self.halves = []                # per half-inning facts, for --recap
         self.log_width = 68
 
     # -- output helpers ----------------------------------------------------
@@ -620,6 +623,8 @@ class Game:
 
         self.watching = not self.coaches_batting_team(top)
         batting.clear_bases()
+        hits_before = batting.hits
+        leadoff_on = None
         outs = 0
         runs_this_inning = 0
 
@@ -643,6 +648,8 @@ class Game:
                                    self.home if top else self.away)
 
             batter, roll, text, scored, outs_made = play
+            if leadoff_on is None:      # did the first man up reach?
+                leadoff_on = batter in batting.bases or batter in scored
 
             # Runs only count if the third out wasn't made on the play.
             if outs + outs_made >= 3:
@@ -667,12 +674,40 @@ class Game:
             if (not top and inning >= self.regulation
                     and self.home.runs > self.away.runs):
                 batting.line.append(runs_this_inning)
+                self.record_half(batting, inning, top, runs_this_inning,
+                                 hits_before, leadoff_on)
                 self.say("  *** Ballgame. %s win it at home. ***" % self.home.name)
                 return
 
         batting.line.append(runs_this_inning)
+        self.record_half(batting, inning, top, runs_this_inning,
+                         hits_before, leadoff_on)
 
     # -- full game ---------------------------------------------------------
+    def record_half(self, batting: Team, inning: int, top: bool, runs: int,
+                    hits_before: int, leadoff_on) -> None:
+        """Facts for the half just finished.  Called from both exits -- a
+        walk-off returns early, and forgetting it there loses the runs."""
+        self.halves.append({
+            "team": batting.name, "inning": inning, "top": top, "runs": runs,
+            "hits": batting.hits - hits_before,
+            "left_on": sum(1 for r in batting.bases if r is not None),
+            "leadoff_on": bool(leadoff_on),
+        })
+
+    def ticker(self, stop: "threading.Event") -> None:
+        """A spinner and a clock while we wait on the call."""
+        label = "  waiting on the booth "
+        start = time.time()
+        for frame in itertools.cycle("|/-\\"):
+            if stop.is_set():
+                break
+            sys.stdout.write("\r%s%s %.0fs" % (label, frame, time.time() - start))
+            sys.stdout.flush()
+            time.sleep(0.12)
+        sys.stdout.write("\r" + " " * (len(label) + 8) + "\r")
+        sys.stdout.flush()
+
     def recap(self) -> None:
         """Hand the game to Claude and print the radio wrap."""
         try:
@@ -683,8 +718,21 @@ class Game:
         self.say(" " + "-" * (self.log_width - 2))
         self.say(" THE WRAP")
         self.say("")
-        text = recap_module.write_recap(self.transcript, self.away.name,
-                                       self.home.name)
+
+        # It takes a few seconds.  Spin only on a real terminal, and never
+        # through say(), so the ticker stays out of the transcript and out of
+        # piped output.
+        stop = threading.Event()
+        if sys.stdout.isatty():
+            threading.Thread(target=self.ticker, args=(stop,), daemon=True).start()
+        try:
+            text = recap_module.write_recap(self.transcript, self.away.name,
+                                           self.home.name,
+                                           recap_module.facts(self))
+        finally:
+            stop.set()
+            if sys.stdout.isatty():
+                time.sleep(0.15)        # let the ticker clear its line
         for line in recap_module.wrap(text, self.log_width):
             self.say(line)
         self.say()

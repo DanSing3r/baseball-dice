@@ -306,11 +306,20 @@ Note the interpreter: the SDK lives in the project venv, so the recap needs
 `.venv/bin/python` rather than the system `python3`. Run it on the wrong one and
 it tells you so.
 
-It is asked for what a good postgame wrap does: name the turning point and say
-why it mattered, trace the shape of the game, give credit where the box score
-says it is due — and never inflate a dull game. It reads the log and nothing
-else, so it can notice things no canned rule would, like a hitter going
-four-for-five without driving in a run.
+It is asked to open with the result and the reason for it in one sentence, then
+spend what is left on whatever was genuinely worth noticing — and explicitly not
+to recap the game inning by inning. What counts as worth noticing: anything
+extraordinary, patterns that only surface across a whole game, and what each
+side did well or badly set against the other.
+
+Roughly 80 to 120 words, and it takes about ten seconds, so a spinner runs while
+it waits.
+
+The game also hands over a block of totals it has counted itself — runs, hits,
+runners left on base, half-innings with more than one hit, how many leadoff men
+reached and how many of those innings scored, multi-hit games. Counting across
+two hundred lines of log is where a recap gets things wrong, so the arithmetic
+is done in Python and the model only has to choose what to say about it.
 
 Setup, once:
 
