@@ -1,5 +1,11 @@
+# secrets -- never commit these
+.env
+config.env
+
+# python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+
 .DS_Store
