@@ -160,13 +160,13 @@ applies only while you are still stepping through the game — press `a` for aut
 and the rest runs at whatever `--delay` says, which is full speed unless you
 set it.
 
-**Steal** — a runner on first with second base open. One die, 4 or better and
-he has it: a flat coin flip. A caught stealing is an out and the batter stays up.
+**Steal** — a runner on first with second base open. One die, 3 or better and
+he has it: 67% safe. A caught stealing is an out and the batter stays up.
 
-That is well under the real break-even of about 70%, so by the numbers running
-is a losing play — it costs 0.19 expected runs with nobody out, and even the
-chance of scoring at all drops four points. Steal because the situation demands
-it, not because it pays.
+That sits just under the real break-even of about 70%, so running is close to a
+wash and slightly negative — worth doing when the situation calls for it rather
+than for the value. The bench manager runs at one chance in six, which costs it
+about 1.2 points of win rate against a manager who never runs at all.
 
 **Bunt** — anybody on base, under two outs. One die, but it is really two
 different plays. Moving a runner up only asks the batter to get the ball on the
@@ -193,7 +193,7 @@ With a runner on third — the squeeze:
 
 So a sacrifice moves the runner **83%** of the time and a squeeze brings the run
 in **67%** — measured at 83.3% and 65.4% over 800 games. The ladder across the
-three called plays runs sacrifice 83%, squeeze 67%, steal 50%. On a 6 the defense gets
+three called plays runs sacrifice 83%, squeeze 67%, steal 67%. On a 6 the defense gets
 the most advanced runner it can reach, and a runner is only *forced* when every
 base behind him is occupied, so with first base empty there is no force anywhere
 and the throw has to beat the runner:
@@ -235,7 +235,7 @@ giveaway.
 
 Whatever you do not call, a conservative bench manager does. It takes one
 running chance in six, which works out to about 0.9 steal attempts per team per
-game at a 50% success rate, and it only bunts from the seventh inning on.
+game at a 67% success rate, and it only bunts from the seventh inning on.
 
 ## Sacrifice flies and tagging up
 

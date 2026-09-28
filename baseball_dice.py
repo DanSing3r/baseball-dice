@@ -54,8 +54,10 @@ LEGEND = {
 # An error check: this or under and the fielder boots it, else play it out.
 ERROR_ON = 3
 
-# A steal is safe on this or better -- 4 gives 50%, 3 gives 67%, 2 gives 83%.
-STEAL_SAFE_ON = 4
+# A steal is safe on this or better -- 3 gives 67%, 4 gives 50%, 2 gives 83%.
+# 67% sits near the real break-even, which is what makes the bench manager's
+# one-in-six running rate defensible rather than a systematic leak.
+STEAL_SAFE_ON = 3
 
 # Sub-roll for XB: 1-3 double, 4 triple, 5-6 home run.
 XB_TABLE = {1: "2B", 2: "2B", 3: "2B", 4: "3B", 5: "HR", 6: "HR"}
