@@ -182,6 +182,7 @@ class Game:
         self.last_play = None
         self.transcript = []            # every line printed, for --recap
         self.halves = []                # per half-inning facts, for --recap
+        self.calls = []                 # steals and bunts, and who called them
         self.log_width = 68
 
     # -- output helpers ----------------------------------------------------
@@ -636,13 +637,17 @@ class Game:
             call = self.coach_call(batting, outs, inning, top)
 
             if call == "steal":
+                where = batting.diagram()
                 runner, roll, text, outs_made = self.try_steal(batting)
+                self.note_call("steal", batting, inning, top, outs, where, text)
                 outs += outs_made
                 self.say("  %-10s %-12s %s" % (roll, runner.name, text))
                 continue
 
             if call == "bunt":
+                where = batting.diagram()
                 play = self.sacrifice(batting, outs)
+                self.note_call("bunt", batting, inning, top, outs, where, play[2])
             else:
                 play = self.at_bat(batting, outs,
                                    self.home if top else self.away)
@@ -684,6 +689,15 @@ class Game:
                          hits_before, leadoff_on)
 
     # -- full game ---------------------------------------------------------
+    def note_call(self, kind: str, batting: Team, inning: int, top: bool,
+                  outs: int, bases: str, text: str) -> None:
+        """A steal or a bunt, and whether you called it or the bench did."""
+        self.calls.append({
+            "kind": kind, "team": batting.name, "inning": inning, "top": top,
+            "outs": outs, "bases": bases, "text": text,
+            "by_you": self.interactive and self.coaches_batting_team(top),
+        })
+
     def record_half(self, batting: Team, inning: int, top: bool, runs: int,
                     hits_before: int, leadoff_on) -> None:
         """Facts for the half just finished.  Called from both exits -- a

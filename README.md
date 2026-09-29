@@ -306,14 +306,16 @@ Note the interpreter: the SDK lives in the project venv, so the recap needs
 `.venv/bin/python` rather than the system `python3`. Run it on the wrong one and
 it tells you so.
 
-It is asked to open with the result and the reason for it in one sentence, then
-spend what is left on whatever was genuinely worth noticing — and explicitly not
-to recap the game inning by inning. What counts as worth noticing: anything
-extraordinary, patterns that only surface across a whole game, and what each
-side did well or badly set against the other.
+Three sentences, 75 words at most, written about the club you manage. The first
+carries the result and the single thing that produced it — one inning, one
+swing, one collapse, not a sequence of events. The second is what your club did
+well or badly across the whole afternoon, the sort of thing only the totals
+reveal. The third is about your own decisions, because the game tells it which
+steals and bunts were *called* and whether you or the bench called them; if no
+call mattered, it spends the sentence on the sharpest thing left.
 
-Roughly 80 to 120 words, and it takes about ten seconds, so a spinner runs while
-it waits.
+At most two players get named. It takes about ten seconds, so a spinner runs
+while it waits.
 
 The game also hands over a block of totals it has counted itself — runs, hits,
 runners left on base, half-innings with more than one hit, how many leadoff men
