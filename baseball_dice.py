@@ -70,6 +70,11 @@ K_FLAVOR = ["swinging", "looking", "on three pitches", "chasing one low and away
 
 PLAY_KEYS = {"steal": "(s)teal", "bunt": "(b)unt"}
 
+# The field, drawn small.
+FILLED, EMPTY = "\u25c6", "\u25c7"          # a base with a runner on it, and without
+OUT_ON, OUT_OFF = "\u25cf", "\u25cb"        # outs recorded, outs remaining
+HOME_PLATE, BATTING = "\u25b2", "\u25b8"    # the plate, and who is hitting
+
 NAMES_AWAY = ["Ortega", "Blackwell", "Nakamura", "Ruiz", "Fenwick",
               "Okafor", "Delgado", "Halloran", "Petrosian"]
 NAMES_HOME = ["Whitaker", "Castellanos", "Bergstrom", "Aziz", "Moody",
@@ -78,6 +83,13 @@ NAMES_HOME = ["Whitaker", "Castellanos", "Bergstrom", "Aziz", "Moody",
 
 def d6() -> int:
     return random.randint(1, 6)
+
+
+def ordinal(n: int) -> str:
+    """1st, 2nd, 3rd, 4th ... and 11th through 13th, which break the pattern."""
+    if 11 <= n % 100 <= 13:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
 # --------------------------------------------------------------------------
@@ -232,10 +244,35 @@ class Game:
             print(pad + stem + "\u2514\u2500 " + labels[k])
         print()
 
-    def scorebug(self, batting: Team, outs: int) -> str:
-        """Bases and outs, as shown before every play."""
-        return "[%s | %d out%s]" % (
-            batting.diagram(), outs, "" if outs == 1 else "s")
+    def diamond(self, batting: Team, outs: int, inning: int,
+                top: bool) -> List[str]:
+        """The situation drawn as a field: bases where bases actually are,
+        third on the left and first on the right, home at the bottom."""
+        filled = lambda i: FILLED if batting.bases[i] else EMPTY
+        dots = " ".join(OUT_ON if i < outs else OUT_OFF for i in range(3))
+        at_bat = lambda team: BATTING if team is batting else " "
+        width = max(len(self.away.name), len(self.home.name))
+        return [
+            "      %s      %s %-*s %2d"
+            % (filled(1), at_bat(self.away), width, self.away.name,
+               self.away.runs),
+            "   %s     %s   %s %-*s %2d"
+            % (filled(2), filled(0), at_bat(self.home), width, self.home.name,
+               self.home.runs),
+            "      %s        %s   %s %d%s"
+            % (HOME_PLATE, dots, "top" if top else "bot", inning,
+               ordinal(inning)),
+        ]
+
+    def show_situation(self, batting: Team, outs: int, inning: int,
+                       top: bool) -> None:
+        """Draw the field.  Printed, not said -- it is a picture of the state,
+        not a thing that happened, so it stays out of the transcript the recap
+        reads.  One beat for the block, not one per line."""
+        print()                         # one plate appearance per block
+        for line in self.diamond(batting, outs, inning, top):
+            print(line)
+        self.hold()
 
     def available_plays(self, batting: Team, outs: int) -> List[str]:
         """Plays that are legal in this situation, before the pitch."""
@@ -292,7 +329,7 @@ class Game:
                          + [PLAY_KEYS[p] for p in plays]
                          + (["(d)ice"] if self.last_play else [])
                          + ["(a)uto", "(q)uit"])
-        line = "   %s  %s > " % (self.scorebug(batting, outs), menu)
+        line = "     %s > " % menu
         while True:
             try:
                 answer = input(line).strip().lower()
@@ -612,8 +649,7 @@ class Game:
         self.watching = False           # the banner never crawls
         self.last_play = None           # nothing from this half to explain yet
         label = "Top" if top else "Bottom"
-        suffix = "th" if 11 <= inning % 100 <= 13 else \
-            {1: "st", 2: "nd", 3: "rd"}.get(inning % 10, "th")
+        suffix = ordinal(inning)
 
         self.say()
         self.say("-" * self.log_width)
@@ -630,10 +666,10 @@ class Game:
         runs_this_inning = 0
 
         while outs < 3:
-            if self.watching and self.interactive:
-                # You are not being asked anything here, but you should still
-                # see what the situation is before the play resolves.
-                self.say("   %s" % self.scorebug(batting, outs))
+            if self.interactive:
+                # Both halves: you are watching one and deciding in the other,
+                # and either way you want to see where things stand.
+                self.show_situation(batting, outs, inning, top)
             call = self.coach_call(batting, outs, inning, top)
 
             if call == "steal":

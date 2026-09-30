@@ -120,14 +120,22 @@ third baseman with the force play taken at second, and `grounds to second, and
 reaches on the error` is a ball booted by the second baseman, with the batter
 standing on first.
 
-In interactive mode the prompt shows the situation before you roll:
+In interactive mode the field is drawn before every plate appearance, in both
+halves:
 
 ```
-   [1B:* 2B:o 3B:o | 1 out]  Enter to roll, (a)uto, (q)uit >
+      ◇        Riverton Reds    0
+   ◇     ◆   ▸ Bayside Bandits  1
+      ▲        ● ○ ○   bot 1st
+     Enter to roll, (s)teal, (b)unt, (d)ice, (a)uto, (q)uit >
 ```
 
-`*` is an occupied base, `o` an empty one — here, a runner on first with one
-out.
+Bases sit where bases sit — third on the left, first on the right, second at the
+top, home at the bottom. `◆` is occupied and `◇` is empty, so that reads as a
+runner on first. Filled circles are outs recorded, and `▸` marks who is batting.
+
+It is drawn, not logged: the recap reads the play-by-play and never sees the
+field, and `--auto` prints no diamonds at all.
 
 ## Coaching decisions
 
