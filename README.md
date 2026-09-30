@@ -341,6 +341,33 @@ why and leaves the game alone.
 
 About 4 to 5 cents a game on Claude Opus 5, so roughly 20 recaps per dollar.
 
+## Changing things without breaking them
+
+`check.py` is the safety net. Run it before and after any change:
+
+```
+python3 check.py            # a couple of seconds
+python3 check.py --long     # wider samples, tighter tolerances
+```
+
+It checks two different kinds of thing. **Invariants** must hold in every game —
+player runs reconcile with the team total, RBI with runs, the line score with
+both, per-half facts with the line score, nobody is ever on two bases at once, no
+play makes negative outs, no game finishes tied. It walks every combination of
+bases and outs for at-bats, bunts and steals looking for illegal states.
+
+**Baselines** are statistical. This game is tuned to produce roughly real
+baseball, so a rules change that quietly moves the run environment is a
+regression even when nothing crashes. Strikeout rate, on-base, the odds on each
+called play, runs and errors per team per game, league batting average — all with
+tolerances wide enough not to flake.
+
+If you change a rule deliberately, update the expected value in `check.py` in the
+same commit. That way the file always says what the game is currently supposed to
+do, and a surprise is always a real surprise.
+
+It has no dependencies and runs on the system python, unlike `--recap`.
+
 ## Other flags
 
 `--away NAME` · `--home NAME` · `--innings N` · `--coach home|away|both|none`
