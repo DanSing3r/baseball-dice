@@ -124,14 +124,23 @@ In interactive mode the field is drawn before every plate appearance, in both
 halves:
 
 ```
-  [5-6|3]    Whitaker     doubles into the gap to left.
-  [2-4|4]    Castellanos  lifts a sacrifice fly to center.  (1 run · 1 out · 0-1)
-     Enter to roll, (s)teal, (b)unt, (d)ice, (a)uto, (q)uit >
+  [2-3|6]    Lindqvist    grounds out to second.  (3 out)
+     Enter to roll, (s)teal, (d)ice, (a)uto, (q)uit >
  ------------------------------------------------------------------
-      ◇        Riverton Reds    0
-   ◇     ◆   ▸ Bayside Bandits  1
-      ▲        ● ○ ○   bot 1st
+      ◇        Riverton Reds    6
+   ◇     ◆   ▸ Bayside Bandits  2
+      ▲        ● ● ○   bot 4th
+
+                   1  2  3  4   R  H  E
+  Riverton Reds    0  0  2  4   6  6  0
+  Bayside Bandits  0  0  1  ·   2  3  0
+
+  AT BAT   Lindqvist    0-for-0     ON DECK  Sanjay       1-for-1
 ```
+
+The panel carries the field, the inning-by-inning with the half in progress
+marked `·`, and who is up with what they have done today. It is the same line
+score renderer the final box score uses, so the two cannot drift apart.
 
 Each play line carries what it changed — runs scored, the out count when an out
 is recorded, and the score when it moves — so you can follow along without

@@ -78,7 +78,7 @@ PLAY_KEYS = {"steal": "(s)teal", "bunt": "(b)unt"}
 FILLED, EMPTY = "\u25c6", "\u25c7"          # a base with a runner on it, and without
 OUT_ON, OUT_OFF = "\u25cf", "\u25cb"        # outs recorded, outs remaining
 HOME_PLATE, BATTING = "\u25b2", "\u25b8"    # the plate, and who is hitting
-PANEL_HEIGHT = 4                        # a rule plus three lines of field
+PANEL_HEIGHT = 10                       # rule, field, line score, who is up
 
 NAMES_AWAY = ["Ortega", "Blackwell", "Nakamura", "Ruiz", "Fenwick",
               "Okafor", "Delgado", "Halloran", "Petrosian"]
@@ -377,6 +377,42 @@ class Game:
                ordinal(inning)),
         ]
 
+    def line_score(self, innings: int, batting: Optional[Team] = None) -> List[str]:
+        """The inning-by-inning, used both live and in the final box score.
+
+        `batting` marks a half still in progress with a dot, so mid-game the
+        column for the current inning is not misread as a scoreless one."""
+        width = max(len(self.away.name), len(self.home.name))
+        rows = [" " * (width + 2)
+                + "".join("%3d" % i for i in range(1, innings + 1))
+                + "   R  H  E"]
+        for team in (self.away, self.home):
+            cells = "".join("%3s" % c for c in team.line)
+            in_progress = team is batting
+            if in_progress:
+                cells += "%3s" % "\u00b7"
+            done = len(team.line) + (1 if in_progress else 0)
+            rows.append("  %-*s%s%s %3d %2d %2d"
+                        % (width, team.name, cells, "   " * (innings - done),
+                           team.runs, team.hits, team.errors))
+        return rows
+
+    def panel(self, batting: Team, outs: int, inning: int,
+              top: bool) -> List[str]:
+        """Everything pinned to the foot of the window: the field, the
+        inning-by-inning, and who is about to hit."""
+        on_deck = batting.lineup[(batting.spot + 1) % len(batting.lineup)]
+        today = lambda p: "%d-for-%d" % (p.h, p.ab)
+        innings = max(len(self.away.line), len(self.home.line), inning)
+        return ([" " + "-" * (self.log_width - 2)]
+                + self.diamond(batting, outs, inning, top)
+                + [""]
+                + self.line_score(innings, batting)
+                + [""]
+                + ["  AT BAT   %-12s %-9s   ON DECK  %-12s %s"
+                   % (batting.due_up().name, today(batting.due_up()),
+                      on_deck.name, today(on_deck))])
+
     def your_team(self) -> Team:
         """The club a bare score is quoted from the point of view of.  Yours,
         which is the home side unless you took the visitors' dugout."""
@@ -411,12 +447,12 @@ class Game:
         old way.  Either way it is drawn, never said: it is a picture of the
         state rather than a thing that happened, so it stays out of the
         transcript the recap reads."""
-        field = self.diamond(batting, outs, inning, top)
+        block = self.panel(batting, outs, inning, top)
         if self.screen.on:
-            self.screen.draw([" " + "-" * (self.log_width - 2)] + field)
+            self.screen.draw(block)
         else:
             print()
-            for line in field:
+            for line in block[1:]:      # the rule only divides a pinned panel
                 print(line)
         self.hold()
 
@@ -966,16 +1002,8 @@ class Game:
         self.watching = False
         self.say()
         self.say("=" * self.log_width)
-        width = max(len(self.away.name), len(self.home.name))
-
-        header = " " * (width + 2) + "".join("%3d" % i for i in range(1, innings_played + 1))
-        self.say(header + "   R  H  E")
-        for team in (self.away, self.home):
-            cells = "".join("%3s" % c for c in team.line)
-            pad = "   " * (innings_played - len(team.line))
-            self.say("  %-*s%s%s %3d %2d %2d" % (
-                width, team.name, cells, pad,
-                team.runs, team.hits, team.errors))
+        for row in self.line_score(innings_played):
+            self.say(row)
         self.say("=" * self.log_width)
 
         winner, loser = ((self.home, self.away) if self.home.runs > self.away.runs
