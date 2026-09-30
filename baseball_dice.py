@@ -21,9 +21,11 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import os
 import itertools
 import random
 import shutil
+import signal
 import sys
 import threading
 import time
@@ -194,24 +196,72 @@ class Screen:
     the program exits, so stop() is registered with atexit as well as being
     called normally."""
 
-    def __init__(self, height: int):
+    # Killed by a signal, atexit does not run -- so these are trapped too.
+    SIGNALS = ("SIGINT", "SIGTERM", "SIGHUP")
+
+    def __init__(self, height: int, width: int = 72):
         self.height = height
+        self.width = width
         self.rows = 0
+        self.previous = {}
         self.on = False
 
     def start(self) -> None:
         if not sys.stdout.isatty():
             return
-        rows = shutil.get_terminal_size(fallback=(80, 24)).lines
-        if rows < self.height + 8:      # no room to scroll in; stay plain
-            return
-        self.rows = rows
+        size = shutil.get_terminal_size(fallback=(80, 24))
+        if size.lines < self.height + 8 or size.columns < self.width:
+            return                      # no room; stay plain
+        self.rows = size.lines
         sys.stdout.write("\033[2J")                            # clear
-        sys.stdout.write("\033[%d;%dr" % (self.height + 1, rows))
+        sys.stdout.write("\033[%d;%dr" % (self.height + 1, self.rows))
         sys.stdout.write("\033[%d;1H" % (self.height + 1))     # into the log
         sys.stdout.flush()
         self.on = True
         atexit.register(self.stop)
+        self.trap()
+        if hasattr(signal, "SIGWINCH"):
+            try:
+                signal.signal(signal.SIGWINCH, self.resized)
+            except (ValueError, OSError):
+                pass
+
+    def trap(self) -> None:
+        """Put the terminal back before dying, however we are asked to die.
+
+        A terminal left with a scrolling region set stays broken after the
+        process is gone, and the usual atexit hook does not run when a signal
+        kills us.  Each previous handler is kept and re-raised so quitting still
+        behaves normally -- ctrl-C still reads as an interrupt."""
+        for name in self.SIGNALS:
+            sig = getattr(signal, name, None)
+            if sig is None:
+                continue
+            try:
+                self.previous[sig] = signal.signal(sig, self.on_signal)
+            except (ValueError, OSError):
+                pass                    # not the main thread, or unsupported
+
+    def on_signal(self, signum, frame) -> None:
+        self.stop()
+        previous = self.previous.get(signum, signal.SIG_DFL)
+        if callable(previous):
+            previous(signum, frame)     # e.g. ctrl-C raises KeyboardInterrupt
+            return
+        signal.signal(signum, signal.SIG_DFL)
+        os.kill(os.getpid(), signum)    # die the way we were told to
+
+    def resized(self, *_ignored) -> None:
+        """Re-fit after the window changes, or give up and go plain."""
+        if not self.on:
+            return
+        size = shutil.get_terminal_size(fallback=(80, 24))
+        if size.lines < self.height + 8 or size.columns < self.width:
+            self.stop()
+            return
+        self.rows = size.lines
+        sys.stdout.write("\033[%d;%dr" % (self.height + 1, self.rows))
+        sys.stdout.flush()
 
     def draw(self, lines: List[str]) -> None:
         """Repaint the panel without disturbing where the log is writing."""
