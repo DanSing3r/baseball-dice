@@ -78,7 +78,7 @@ PLAY_KEYS = {"steal": "(s)teal", "bunt": "(b)unt"}
 FILLED, EMPTY = "\u25c6", "\u25c7"          # a base with a runner on it, and without
 OUT_ON, OUT_OFF = "\u25cf", "\u25cb"        # outs recorded, outs remaining
 HOME_PLATE, BATTING = "\u25b2", "\u25b8"    # the plate, and who is hitting
-PANEL_HEIGHT = 5                        # blank + three lines of field + a rule
+PANEL_HEIGHT = 4                        # a rule plus three lines of field
 
 NAMES_AWAY = ["Ortega", "Blackwell", "Nakamura", "Ruiz", "Fenwick",
               "Okafor", "Delgado", "Halloran", "Petrosian"]
@@ -182,11 +182,15 @@ def make_team(name: str, names: List[str]) -> Team:
 
 
 class Screen:
-    """A panel pinned to the top of the terminal with the play log scrolling
-    underneath it.
+    """A panel pinned to the foot of the terminal, with the play log scrolling
+    above it.
 
-    This uses the terminal's own scrolling region (DECSTBM): everything below
-    the panel scrolls, everything above stays put, so the field can be redrawn
+    It sits at the bottom rather than the top because that is where new lines
+    appear: the log fills downward and then scrolls, so the newest play is
+    always just above the panel and your eye never has to travel.
+
+    This uses the terminal's own scrolling region (DECSTBM): everything above
+    the panel scrolls, the panel itself stays put, so the field can be redrawn
     in place without the log jumping.  No curses, no dependency, and if stdout
     is not a terminal -- piped, redirected, --auto into a file -- none of it
     runs and the game prints plainly as before.
@@ -214,8 +218,8 @@ class Screen:
             return                      # no room; stay plain
         self.rows = size.lines
         sys.stdout.write("\033[2J")                            # clear
-        sys.stdout.write("\033[%d;%dr" % (self.height + 1, self.rows))
-        sys.stdout.write("\033[%d;1H" % (self.height + 1))     # into the log
+        sys.stdout.write("\033[1;%dr" % (self.rows - self.height))
+        sys.stdout.write("\033[1;1H")                          # into the log
         sys.stdout.flush()
         self.on = True
         atexit.register(self.stop)
@@ -260,7 +264,7 @@ class Screen:
             self.stop()
             return
         self.rows = size.lines
-        sys.stdout.write("\033[%d;%dr" % (self.height + 1, self.rows))
+        sys.stdout.write("\033[1;%dr" % (self.rows - self.height))
         sys.stdout.flush()
 
     def draw(self, lines: List[str]) -> None:
@@ -268,7 +272,8 @@ class Screen:
         if not self.on:
             return
         sys.stdout.write("\0337")                              # save cursor
-        for row, text in enumerate(lines[:self.height], start=1):
+        first = self.rows - self.height + 1
+        for row, text in enumerate(lines[:self.height], start=first):
             sys.stdout.write("\033[%d;1H\033[2K%s" % (row, text))
         sys.stdout.write("\0338")                              # restore it
         sys.stdout.flush()
@@ -372,6 +377,23 @@ class Game:
                ordinal(inning)),
         ]
 
+    def play_line(self, roll: str, who: str, text: str, runs: int,
+                  outs_made: int, outs: int) -> str:
+        """One line of log, with what the play actually changed.
+
+        Runs, the out count when an out was recorded, and the score when it
+        moved -- so the line carries the state without your having to look
+        away at the panel."""
+        tail = []
+        if runs:
+            tail.append("%d run%s" % (runs, "" if runs == 1 else "s"))
+        if outs_made:
+            tail.append("%d out" % min(outs, 3))
+        if runs:
+            tail.append("%d-%d" % (self.away.runs, self.home.runs))
+        line = "  %-10s %-12s %s" % (roll, who, text)
+        return line + ("  (%s)" % " \u00b7 ".join(tail) if tail else "")
+
     def show_situation(self, batting: Team, outs: int, inning: int,
                        top: bool) -> None:
         """Show where things stand.
@@ -381,12 +403,12 @@ class Game:
         old way.  Either way it is drawn, never said: it is a picture of the
         state rather than a thing that happened, so it stays out of the
         transcript the recap reads."""
-        panel = [""] + self.diamond(batting, outs, inning, top) \
-            + [" " + "-" * (self.log_width - 2)]
+        field = self.diamond(batting, outs, inning, top)
         if self.screen.on:
-            self.screen.draw(panel)
+            self.screen.draw([" " + "-" * (self.log_width - 2)] + field)
         else:
-            for line in panel[:-1]:
+            print()
+            for line in field:
                 print(line)
         self.hold()
 
@@ -793,7 +815,8 @@ class Game:
                 runner, roll, text, outs_made = self.try_steal(batting)
                 self.note_call("steal", batting, inning, top, outs, where, text)
                 outs += outs_made
-                self.say("  %-10s %-12s %s" % (roll, runner.name, text))
+                self.say(self.play_line(roll, runner.name, text, 0,
+                                        outs_made, outs))
                 continue
 
             if call == "bunt":
@@ -822,10 +845,8 @@ class Game:
                 batting.runs += 1
                 runs_this_inning += 1
 
-            line = "  %-10s %-12s %s" % (roll, batter.name, text)
-            if scored:
-                line += "  (%d run%s)" % (len(scored), "" if len(scored) == 1 else "s")
-            self.say(line)
+            self.say(self.play_line(roll, batter.name, text, len(scored),
+                                    outs_made, outs))
 
             # Walk-off: home team takes the lead in the last of the ninth.
             if (not top and inning >= self.regulation

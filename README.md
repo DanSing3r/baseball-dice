@@ -124,19 +124,27 @@ In interactive mode the field is drawn before every plate appearance, in both
 halves:
 
 ```
+  [5-6|3]    Whitaker     doubles into the gap to left.
+  [2-4|4]    Castellanos  lifts a sacrifice fly to center.  (1 run · 1 out · 0-1)
+     Enter to roll, (s)teal, (b)unt, (d)ice, (a)uto, (q)uit >
+ ------------------------------------------------------------------
       ◇        Riverton Reds    0
    ◇     ◆   ▸ Bayside Bandits  1
       ▲        ● ○ ○   bot 1st
-     Enter to roll, (s)teal, (b)unt, (d)ice, (a)uto, (q)uit >
 ```
+
+Each play line carries what it changed — runs scored, the out count when an out
+is recorded, and the score when it moves — so you can follow along without
+looking away at the panel.
 
 Bases sit where bases sit — third on the left, first on the right, second at the
 top, home at the bottom. `◆` is occupied and `◇` is empty, so that reads as a
 runner on first. Filled circles are outs recorded, and `▸` marks who is batting.
 
-In a real terminal the field is **pinned to the top** and updates in place while
-the plays scroll underneath it, so it stays in front of you through the inning
-instead of being reprinted before every batter.
+In a real terminal the field is **pinned to the foot of the window** and updates
+in place while the plays scroll above it. It sits at the bottom because that is
+where new lines appear — the log fills downward and then scrolls, so the newest
+play is always directly above the panel and your eye never has to travel.
 
 That uses the terminal's own scrolling region rather than a TUI library, so
 there is still nothing to install. It turns itself off when stdout is not a
