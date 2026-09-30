@@ -20,8 +20,10 @@ first to third.
 from __future__ import annotations
 
 import argparse
+import atexit
 import itertools
 import random
+import shutil
 import sys
 import threading
 import time
@@ -74,6 +76,7 @@ PLAY_KEYS = {"steal": "(s)teal", "bunt": "(b)unt"}
 FILLED, EMPTY = "\u25c6", "\u25c7"          # a base with a runner on it, and without
 OUT_ON, OUT_OFF = "\u25cf", "\u25cb"        # outs recorded, outs remaining
 HOME_PLATE, BATTING = "\u25b2", "\u25b8"    # the plate, and who is hitting
+PANEL_HEIGHT = 5                        # blank + three lines of field + a rule
 
 NAMES_AWAY = ["Ortega", "Blackwell", "Nakamura", "Ruiz", "Fenwick",
               "Okafor", "Delgado", "Halloran", "Petrosian"]
@@ -176,13 +179,67 @@ def make_team(name: str, names: List[str]) -> Team:
     return Team(name=name, lineup=[Player(n) for n in names])
 
 
+class Screen:
+    """A panel pinned to the top of the terminal with the play log scrolling
+    underneath it.
+
+    This uses the terminal's own scrolling region (DECSTBM): everything below
+    the panel scrolls, everything above stays put, so the field can be redrawn
+    in place without the log jumping.  No curses, no dependency, and if stdout
+    is not a terminal -- piped, redirected, --auto into a file -- none of it
+    runs and the game prints plainly as before.
+
+    The one thing that must not be skipped is putting the region back on the
+    way out.  A terminal left with a scrolling region set stays broken after
+    the program exits, so stop() is registered with atexit as well as being
+    called normally."""
+
+    def __init__(self, height: int):
+        self.height = height
+        self.rows = 0
+        self.on = False
+
+    def start(self) -> None:
+        if not sys.stdout.isatty():
+            return
+        rows = shutil.get_terminal_size(fallback=(80, 24)).lines
+        if rows < self.height + 8:      # no room to scroll in; stay plain
+            return
+        self.rows = rows
+        sys.stdout.write("\033[2J")                            # clear
+        sys.stdout.write("\033[%d;%dr" % (self.height + 1, rows))
+        sys.stdout.write("\033[%d;1H" % (self.height + 1))     # into the log
+        sys.stdout.flush()
+        self.on = True
+        atexit.register(self.stop)
+
+    def draw(self, lines: List[str]) -> None:
+        """Repaint the panel without disturbing where the log is writing."""
+        if not self.on:
+            return
+        sys.stdout.write("\0337")                              # save cursor
+        for row, text in enumerate(lines[:self.height], start=1):
+            sys.stdout.write("\033[%d;1H\033[2K%s" % (row, text))
+        sys.stdout.write("\0338")                              # restore it
+        sys.stdout.flush()
+
+    def stop(self) -> None:
+        if not self.on:
+            return
+        self.on = False
+        sys.stdout.write("\033[r")                             # region back
+        sys.stdout.write("\033[%d;1H\n" % self.rows)
+        sys.stdout.flush()
+
+
 # --------------------------------------------------------------------------
 # The game
 # --------------------------------------------------------------------------
 class Game:
     def __init__(self, away: Team, home: Team, innings: int = 9,
                  interactive: bool = True, delay: float = 0.0,
-                 coach: str = "home", watch_delay: float = 1.5):
+                 coach: str = "home", watch_delay: float = 1.5,
+                 pinned: bool = True):
         self.away = away
         self.home = home
         self.regulation = innings
@@ -196,6 +253,7 @@ class Game:
         self.halves = []                # per half-inning facts, for --recap
         self.calls = []                 # steals and bunts, and who called them
         self.log_width = 68
+        self.screen = Screen(PANEL_HEIGHT) if pinned else Screen(0)
 
     # -- output helpers ----------------------------------------------------
     def beat(self) -> float:
@@ -266,12 +324,20 @@ class Game:
 
     def show_situation(self, batting: Team, outs: int, inning: int,
                        top: bool) -> None:
-        """Draw the field.  Printed, not said -- it is a picture of the state,
-        not a thing that happened, so it stays out of the transcript the recap
-        reads.  One beat for the block, not one per line."""
-        print()                         # one plate appearance per block
-        for line in self.diamond(batting, outs, inning, top):
-            print(line)
+        """Show where things stand.
+
+        Pinned to the top of the terminal when we have one, so it updates in
+        place while the plays scroll underneath.  Otherwise printed inline the
+        old way.  Either way it is drawn, never said: it is a picture of the
+        state rather than a thing that happened, so it stays out of the
+        transcript the recap reads."""
+        panel = [""] + self.diamond(batting, outs, inning, top) \
+            + [" " + "-" * (self.log_width - 2)]
+        if self.screen.on:
+            self.screen.draw(panel)
+        else:
+            for line in panel[:-1]:
+                print(line)
         self.hold()
 
     def available_plays(self, batting: Team, outs: int) -> List[str]:
@@ -788,6 +854,8 @@ class Game:
         self.say()
 
     def play(self) -> None:
+        if self.interactive:
+            self.screen.start()
         self.say("=" * self.log_width)
         self.say(" BASEBALL DICE -- %s at %s" % (self.away.name, self.home.name))
         self.say("=" * self.log_width)
@@ -814,6 +882,8 @@ class Game:
 
     # -- box score ---------------------------------------------------------
     def final(self, innings_played: int) -> None:
+        # Let the box score and the wrap scroll normally.
+        self.screen.stop()
         self.watching = False
         self.say()
         self.say("=" * self.log_width)
@@ -915,6 +985,8 @@ def main() -> None:
     ap.add_argument("--coach", default="home",
                     choices=["home", "away", "both", "none"],
                     help="which dugout you manage from (default: home)")
+    ap.add_argument("--plain", action="store_true",
+                    help="do not pin the field to the top of the terminal")
     ap.add_argument("--recap", action="store_true",
                     help="after the box score, ask Claude for the radio wrap")
     ap.add_argument("--seed", type=int, help="seed the dice for a repeatable game")
@@ -938,7 +1010,8 @@ def main() -> None:
                 interactive=not args.auto,
                 delay=args.delay,
                 coach=args.coach,
-                watch_delay=args.watch_delay)
+                watch_delay=args.watch_delay,
+                pinned=not args.plain)
     game.play()
     if args.recap:
         game.recap()

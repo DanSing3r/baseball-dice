@@ -134,6 +134,15 @@ Bases sit where bases sit — third on the left, first on the right, second at t
 top, home at the bottom. `◆` is occupied and `◇` is empty, so that reads as a
 runner on first. Filled circles are outs recorded, and `▸` marks who is batting.
 
+In a real terminal the field is **pinned to the top** and updates in place while
+the plays scroll underneath it, so it stays in front of you through the inning
+instead of being reprinted before every batter.
+
+That uses the terminal's own scrolling region rather than a TUI library, so
+there is still nothing to install. It turns itself off when stdout is not a
+terminal — piped, redirected, `--auto` into a file — and when the window is too
+short to scroll in. `--plain` disables it outright.
+
 It is drawn, not logged: the recap reads the play-by-play and never sees the
 field, and `--auto` prints no diamonds at all.
 
