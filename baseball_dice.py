@@ -377,20 +377,28 @@ class Game:
                ordinal(inning)),
         ]
 
+    def your_team(self) -> Team:
+        """The club a bare score is quoted from the point of view of.  Yours,
+        which is the home side unless you took the visitors' dugout."""
+        return self.away if self.coach == "away" else self.home
+
     def play_line(self, roll: str, who: str, text: str, runs: int,
                   outs_made: int, outs: int) -> str:
         """One line of log, with what the play actually changed.
 
         Runs, the out count when an out was recorded, and the score when it
         moved -- so the line carries the state without your having to look
-        away at the panel."""
+        away at the panel.  The score is always yours first, so 2-1 means you
+        are ahead by one whichever dugout you are sitting in."""
         tail = []
         if runs:
             tail.append("%d run%s" % (runs, "" if runs == 1 else "s"))
         if outs_made:
             tail.append("%d out" % min(outs, 3))
         if runs:
-            tail.append("%d-%d" % (self.away.runs, self.home.runs))
+            mine = self.your_team()
+            theirs = self.home if mine is self.away else self.away
+            tail.append("%d-%d" % (mine.runs, theirs.runs))
         line = "  %-10s %-12s %s" % (roll, who, text)
         return line + ("  (%s)" % " \u00b7 ".join(tail) if tail else "")
 

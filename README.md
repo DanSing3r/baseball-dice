@@ -137,6 +137,9 @@ Each play line carries what it changed — runs scored, the out count when an ou
 is recorded, and the score when it moves — so you can follow along without
 looking away at the panel.
 
+The score is always quoted **your side first**, so `2-1` means you are ahead by
+one whichever dugout `--coach` has you in.
+
 Bases sit where bases sit — third on the left, first on the right, second at the
 top, home at the bottom. `◆` is occupied and `◇` is empty, so that reads as a
 runner on first. Filled circles are outs recorded, and `▸` marks who is batting.
