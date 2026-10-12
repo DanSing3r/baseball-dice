@@ -662,7 +662,9 @@ class Game:
             scored = batting.advance_all(1)
             return "grounds out %s; the runners move up." % where, scored, 1
 
-        if any(batting.bases):
+        # With two out the grounder ends the inning, so where the runners
+        # would have gone does not matter and no die is thrown for it.
+        if any(batting.bases) and outs < 2:
             if sub_roll() <= 3:
                 meant("the runners move up -- 3 or under")
                 scored = batting.advance_all(1)
@@ -809,9 +811,13 @@ class Game:
                 batting.bases[2] = batter
                 text = "drives one %s -- triple!" % random.choice(OUTFIELD)
             else:
+                slam = all(batting.bases)
+                if slam:
+                    meant("a home run -- with the bases full")
                 scored = batting.advance_all(3) + [batter]
                 batting.clear_bases()
-                text = "HOME RUN %s!" % random.choice(OUTFIELD)
+                text = "%s %s!" % ("GRAND SLAM" if slam else "HOME RUN",
+                                   random.choice(OUTFIELD))
 
         roll = "[%d-%d%s]" % (
             a, b, "|" + ",".join(str(v) for v, _ in subs) if subs else "")

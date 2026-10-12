@@ -27,33 +27,29 @@ never inflate what the box score will not support.
 The game was decided by dice, but you never mention dice, rolls, charts or odds.
 To you it was a ball game and nothing else.
 
-EXACTLY THREE SENTENCES, AND NO MORE THAN 75 WORDS IN TOTAL. This is the hardest
-part of the job and the whole point of it. Three long sentences stuffed with
-subordinate clauses is a failure, not a solution -- if a clause is the only way
-to keep a fact, cut the clause and lose the fact. You have room for the heart of
-the game and nothing else.
+TWO OR THREE SHORT SENTENCES, AND NO MORE THAN 50 WORDS IN TOTAL. This is not a
+story and not a recap of events. It is the essence of the game: fundamentally,
+how the result came about. Name the shape of the game and the thing that
+decided it, the way someone would sum it up walking out of the park:
 
-Write about the home club. Whether they won or lost is the frame: what they did
-well, what they failed to do, what the afternoon turned on for them. The
-visitors exist only as the thing the home side had to answer.
+  "A pitchers' duel, snapped in the seventh by the bottom of the order."
+  "Bayside piled up hits all day and stranded nearly all of them; Riverton
+  needed only one big inning."
+  "Even through six, then a walk-off in the ninth on a squeeze the home
+  manager called."
 
-Give the three sentences roughly this work:
+Shapes worth reaching for: a slugfest, a pitchers' duel, a blowout decided
+early, a lead given away late, a comeback, one big inning against nothing, a
+game of stranded runners. Then the turn: which inning, which part of the order,
+which kind of hit, or which called play broke it open.
 
-1. The result and the single biggest thing that produced it. Telegraph the heart
-   of the game -- one inning, one swing, one collapse -- not a sequence of
-   events. "Bayside wins it behind a delirious sixth in which they sent nine men
-   to the plate" is the register.
-2. What the home club did well or badly across the whole afternoon, the sort of
-   thing only the totals reveal: eleven hits and three runs, four leadoff men
-   aboard and nothing to show, nothing hit in the air all day, six stranded.
-3. Where possible, the manager's own decisions. The facts name every called play
-   -- steals, sacrifices, squeezes -- and say whether YOU called it or the bench
-   did. A squeeze that scored the tying run, a runner caught stealing to end a
-   threat: say whether the call worked. If no called play mattered, use this
-   sentence for the sharpest remaining observation instead.
+The facts say which inning put the winner ahead for good and who drove in the
+runs from where in the order. Lean on those. Mention a called play -- a steal,
+sacrifice or squeeze -- only if it actually decided the game.
 
-Name at most two players, and only if a sentence genuinely needs one. Prefer the
-club, the inning, the moment.
+Tell it from the home club's side, since that is who was managed. Name at most
+one player, and only if the game truly came down to them. Prefer the inning,
+the part of the order, the kind of game.
 
 Hard rules:
 
@@ -62,12 +58,14 @@ Hard rules:
   weather, no history, no quotes.
 - This game tracks no pitchers, no pitch counts and no balls and strikes. Never
   give a count, a number of pitches, or a pitcher's name or performance.
+  "Pitchers' duel" is fine as shorthand for a low-scoring game, and nothing
+  more.
 - Use the totals you are handed rather than counting anything off the log
   yourself, and never contradict them.
 - If the game was dull, say so plainly. A dull game written up honestly beats a
   dull game inflated.
 - Do not sign off, name yourself, or address the listener as "you".
-- Three sentences, 75 words maximum. No headings, no lists, no
+- Two or three sentences, 50 words maximum. No headings, no lists, no
   paragraph breaks."""
 
 
@@ -129,6 +127,20 @@ def facts(game) -> str:
         if reached_all:
             lines.append("  reached every time up: " + ", ".join(
                 p.name for p in reached_all))
+        # Where in the order the runs came from, so "the bottom of the order"
+        # is something it is told rather than something it guesses.
+        drove_in = [(spot, p) for spot, p in enumerate(team.lineup, start=1)
+                    if p.rbi]
+        if drove_in:
+            lines.append("  runs batted in, by spot in the order: " + ", ".join(
+                "%s (%d%s) %d" % (p.name, spot, ordinal(spot), p.rbi)
+                for spot, p in drove_in))
+    decided = deciding_half(game)
+    if decided:
+        lines.append("")
+        lines.append("%s went ahead for good in the %s of the %d%s."
+                     % (decided["team"], "top" if decided["top"] else "bottom",
+                        decided["inning"], ordinal(decided["inning"])))
     if getattr(game, "calls", None):
         lines.append("")
         lines.append("Called plays (a manager's decision, not something that "
@@ -141,6 +153,24 @@ def facts(game) -> str:
                             "YOU" if c["by_you"] else "the bench",
                             c["kind"], c["text"]))
     return "\n".join(lines)
+
+
+def deciding_half(game) -> Optional[dict]:
+    """The half-inning in which the winner took the lead and never gave it
+    back -- the inning the game was decided in."""
+    if game.away.runs == game.home.runs:
+        return None
+    winner = game.away if game.away.runs > game.home.runs else game.home
+    score = {game.away.name: 0, game.home.name: 0}
+    loser = game.home.name if winner is game.away else game.away.name
+    decided = None
+    for half in game.halves:
+        ahead_before = score[winner.name] > score[loser]
+        score[half["team"]] += half["runs"]
+        ahead_after = score[winner.name] > score[loser]
+        if ahead_after and not ahead_before:
+            decided = half
+    return decided
 
 
 def ordinal(n: int) -> str:

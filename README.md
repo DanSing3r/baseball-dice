@@ -45,6 +45,8 @@ A third die settles the close calls:
 
 - a ground ball with a runner on first and under two outs — double play,
   fielder's choice, or the runners move up
+- any other ground ball with runners aboard and under two outs — do they move
+  up. With two out the grounder ends the inning, so no die is thrown
 - a fly ball with a runner on second or third and under two outs — how deep it
   carried, and so who can advance on it
 - a single with runners aboard — do they take the extra base
@@ -124,7 +126,7 @@ In interactive mode the field is drawn before every plate appearance, in both
 halves:
 
 ```
-  [2-3|6]    Lindqvist    grounds out to second.  (3 out)
+  [2-3]      Lindqvist    grounds out to second.  (3 out)
      Enter to roll, (s)teal, (d)ice, (a)uto, (q)uit >
  ------------------------------------------------------------------
       ◇        Riverton Reds    6
@@ -343,22 +345,20 @@ Note the interpreter: the SDK lives in the project venv, so the recap needs
 `.venv/bin/python` rather than the system `python3`. Run it on the wrong one and
 it tells you so.
 
-Three sentences, 75 words at most, written about the club you manage. The first
-carries the result and the single thing that produced it — one inning, one
-swing, one collapse, not a sequence of events. The second is what your club did
-well or badly across the whole afternoon, the sort of thing only the totals
-reveal. The third is about your own decisions, because the game tells it which
-steals and bunts were *called* and whether you or the bench called them; if no
-call mattered, it spends the sentence on the sharpest thing left.
+Two or three short sentences, 50 words at most — not a story, just how the
+result came about: the shape of the game and what decided it. "A pitchers'
+duel, snapped in the seventh by the bottom of the order" is the register. A
+called steal or bunt only gets a mention if it actually decided things.
 
-At most two players get named. It takes about ten seconds, so a spinner runs
+At most one player gets named. It takes about ten seconds, so a spinner runs
 while it waits.
 
 The game also hands over a block of totals it has counted itself — runs, hits,
 runners left on base, half-innings with more than one hit, how many leadoff men
-reached and how many of those innings scored, multi-hit games. Counting across
-two hundred lines of log is where a recap gets things wrong, so the arithmetic
-is done in Python and the model only has to choose what to say about it.
+reached and how many of those innings scored, multi-hit games, who drove in
+the runs from which spot in the order, and the inning the winner went ahead for
+good. Counting across two hundred lines of log is where a recap gets things
+wrong, so the arithmetic is done in Python and the model only has to choose what to say about it.
 
 Setup, once:
 
