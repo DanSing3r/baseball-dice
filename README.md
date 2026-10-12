@@ -137,7 +137,7 @@ halves:
   Riverton Reds    0  0  2  4   6  6  0
   Bayside Bandits  0  0  1  ·   2  3  0
 
-  AT BAT   Lindqvist    0-for-0     ON DECK  Sanjay       1-for-1
+  AT BAT  7. Lindqvist   0-for-0   ON DECK  8. Sanjay      1-for-1
 ```
 
 The panel carries the field, the inning-by-inning with the half in progress

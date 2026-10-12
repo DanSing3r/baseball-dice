@@ -401,7 +401,8 @@ class Game:
               top: bool) -> List[str]:
         """Everything pinned to the foot of the window: the field, the
         inning-by-inning, and who is about to hit."""
-        on_deck = batting.lineup[(batting.spot + 1) % len(batting.lineup)]
+        deck_spot = (batting.spot + 1) % len(batting.lineup)
+        on_deck = batting.lineup[deck_spot]
         today = lambda p: "%d-for-%d" % (p.h, p.ab)
         innings = max(len(self.away.line), len(self.home.line), inning)
         return ([" " + "-" * (self.log_width - 2)]
@@ -409,9 +410,12 @@ class Game:
                 + [""]
                 + self.line_score(innings, batting)
                 + [""]
-                + ["  AT BAT   %-12s %-9s   ON DECK  %-12s %s"
-                   % (batting.due_up().name, today(batting.due_up()),
-                      on_deck.name, today(on_deck))])
+                # Each name carries its spot in the order.  The gaps are
+                # tight because the line has to fit the log's width.
+                + ["  AT BAT  %d. %-11s %-9s ON DECK  %d. %-11s %s"
+                   % (batting.spot + 1, batting.due_up().name,
+                      today(batting.due_up()),
+                      deck_spot + 1, on_deck.name, today(on_deck))])
 
     def your_team(self) -> Team:
         """The club a bare score is quoted from the point of view of.  Yours,
